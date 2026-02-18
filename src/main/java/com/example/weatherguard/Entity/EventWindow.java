@@ -8,5 +8,5 @@ import lombok.Setter;
 public class EventWindow {
     private String time;
     private int rain_prob;
-    private int wind_kmh;
+    private float wind_kmh;
 }

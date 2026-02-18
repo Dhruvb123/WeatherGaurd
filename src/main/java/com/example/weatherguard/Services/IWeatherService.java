@@ -8,5 +8,5 @@ import java.util.concurrent.CompletableFuture;
 
 public interface IWeatherService {
     WeatherResponse getForecast(EventRequest req);
-    ResponseDTO modifyResponse(WeatherResponse response);
+    ResponseDTO modifyResponse(EventRequest req, WeatherResponse response);
 }

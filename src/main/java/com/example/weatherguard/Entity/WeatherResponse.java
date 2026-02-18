@@ -15,12 +15,12 @@ public class WeatherResponse {
     private String timezone;
     private String timezone_abbreviation;
     public double elevation;
-    public HourlyUnits hourlyUnits;
+    public Hourly_Units hourlyUnits;
     public Hourly hourly;
 
     @Getter
     @Setter
-    public static class HourlyUnits {
+    public static class Hourly_Units {
         public String time;
         public String temperature_2m;
     }
@@ -30,5 +30,8 @@ public class WeatherResponse {
     public static class Hourly {
         public List<String> time;
         public List<Double> temperature_2m;
+        public List<Integer> precipitation_probability;
+        public List<Float> windspeed_10m;
+        public List<Integer> weathercode;
     }
 }

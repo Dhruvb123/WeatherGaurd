@@ -3,7 +3,10 @@ package com.example.weatherguard.contoller;
 import com.example.weatherguard.DTO.ResponseDTO;
 import com.example.weatherguard.Entity.APIError;
 import com.example.weatherguard.Entity.EventRequest;
+import com.example.weatherguard.Entity.WeatherResponse;
 import com.example.weatherguard.Services.IWeatherService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,24 +23,39 @@ public class WeatherController {
         _weatherService = weatherService;
     }
     @PostMapping
-    public CompletableFuture<ResponseEntity<Object>> getEventForecast(@RequestBody EventRequest req){
+    public ResponseEntity<?> getEventForecast(@Valid @RequestBody EventRequest req, HttpServletRequest request){
+        try {
+            if (!isValidTimeRange(req.getStart_time(), req.getEnd_time())) {
+                return ResponseEntity.badRequest().body("Start time must be before End time");
+            }
+            WeatherResponse res = _weatherService.getForecast(req);
+            ResponseDTO resDto = _weatherService.modifyResponse(req, res);
 
-        return _weatherService.getForecast(req)
-                .thenApply(response-> {
+            return ResponseEntity.ok().body(resDto);
+        }
+        catch(Exception ex){
+            return buildError(500, "Internal Server Error", ex.getMessage(), request.getRequestURI());
+        }
+    }
 
-                    return ResponseEntity.ok((Object)_weatherService.modifyResponse(response));
-                })
-                .exceptionally(ex -> {
+    private boolean isValidTimeRange(String startTime, String endTime) {
+        try {
+            LocalDateTime start = LocalDateTime.parse(startTime);
+            LocalDateTime end = LocalDateTime.parse(endTime);
+            return start.isBefore(end);
+        } catch (Exception e) {
+            return false;
+        }
+    }
 
-                    APIError error = new APIError(
-                            LocalDateTime.now(),
-                            500,
-                            "Internal Server Error: ",
-                            ex.getMessage(),
-                            "api/event-forecast"
-                    );
-
-                    return ResponseEntity.status(500).body((Object)error);
-                });
+    private ResponseEntity<APIError> buildError(int status, String error, String message, String path) {
+        APIError apiError = new APIError(
+                LocalDateTime.now(),
+                status,
+                error,
+                message,
+                path
+        );
+        return ResponseEntity.status(status).body(apiError);
     }
 }
