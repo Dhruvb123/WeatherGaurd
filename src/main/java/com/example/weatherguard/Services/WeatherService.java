@@ -7,6 +7,7 @@ import com.example.weatherguard.Entity.WeatherResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,14 +25,14 @@ public class WeatherService implements IWeatherService{
 
 
     @Override
-    public WeatherResponse getForecast(EventRequest req) {
+    public Mono<WeatherResponse> getForecast(EventRequest req) {
 
         double lat = req.getLocation().getLatitude();
         double lon = req.getLocation().getLongitude();
         String start = req.getStart_time().substring(0,10);
         String end = req.getEnd_time().substring(0,10);
 
-        WeatherResponse apiResponse =  webClient.get()
+        return webClient.get()
                                                 .uri(uriBuilder -> uriBuilder
                                                 .queryParam("latitude", lat)
                                                 .queryParam("longitude", lon)
@@ -40,10 +41,8 @@ public class WeatherService implements IWeatherService{
                                                 .queryParam("hourly", "precipitation_probability,windspeed_10m,weathercode")
                                                 .build())
                                         .retrieve()
-                                        .bodyToMono(WeatherResponse.class)
-                                        .block();
+                                        .bodyToMono(WeatherResponse.class);
 
-        return apiResponse;
     }
 
     @Override

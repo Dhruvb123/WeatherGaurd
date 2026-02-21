@@ -7,10 +7,11 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class APIError {
+@Builder
+public class APIResponse<T> {
     private LocalDateTime timestamp;
     private int status;
     private String error;
     private String message;
-    private String path;
+    private T body;
 }

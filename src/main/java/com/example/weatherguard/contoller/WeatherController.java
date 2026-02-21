@@ -1,17 +1,16 @@
 package com.example.weatherguard.contoller;
 
 import com.example.weatherguard.DTO.ResponseDTO;
-import com.example.weatherguard.Entity.APIError;
+import com.example.weatherguard.Entity.APIResponse;
 import com.example.weatherguard.Entity.EventRequest;
-import com.example.weatherguard.Entity.WeatherResponse;
 import com.example.weatherguard.Services.IWeatherService;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
-import java.util.concurrent.CompletableFuture;
 
 @RestController
 @RequestMapping("/api/event-forecast")
@@ -22,20 +21,41 @@ public class WeatherController {
     public WeatherController(IWeatherService weatherService){
         _weatherService = weatherService;
     }
-    @PostMapping
-    public ResponseEntity<?> getEventForecast(@Valid @RequestBody EventRequest req, HttpServletRequest request){
-        try {
-            if (!isValidTimeRange(req.getStart_time(), req.getEnd_time())) {
-                return ResponseEntity.badRequest().body("Start time must be before End time");
-            }
-            WeatherResponse res = _weatherService.getForecast(req);
-            ResponseDTO resDto = _weatherService.modifyResponse(req, res);
 
-            return ResponseEntity.ok().body(resDto);
+    @PostMapping
+    public Mono<ResponseEntity<APIResponse<Object>>> getEventForecast(@Valid @RequestBody EventRequest req) {
+        if (!isValidTimeRange(req.getStart_time(), req.getEnd_time())) {
+            return Mono.just(ResponseEntity.badRequest().body(
+                    APIResponse.builder()
+                            .status(400)
+                            .message("Validation failed")
+                            .error("Start time must be before End time")
+                            .timestamp(LocalDateTime.now())
+                            .build()
+            ));
         }
-        catch(Exception ex){
-            return buildError(500, "Internal Server Error", ex.getMessage(), request.getRequestURI());
-        }
+
+        return _weatherService.getForecast(req)
+                .flatMap(res -> {
+                    ResponseDTO resDto = _weatherService.modifyResponse(req, res);
+                    return Mono.just(ResponseEntity.ok().body(
+                            APIResponse.builder()
+                                    .status(200)
+                                    .message("Success")
+                                    .body(resDto)
+                                    .timestamp(LocalDateTime.now())
+                                    .build()));
+                })
+                .onErrorResume(ex -> Mono.just(
+                        ResponseEntity.status(500).body(
+                                APIResponse.builder()
+                                        .status(500)
+                                        .message("Internal Server Error")
+                                        .error(ex.getMessage())
+                                        .timestamp(LocalDateTime.now())
+                                        .build()
+                        )
+                ));
     }
 
     private boolean isValidTimeRange(String startTime, String endTime) {
@@ -46,16 +66,5 @@ public class WeatherController {
         } catch (Exception e) {
             return false;
         }
-    }
-
-    private ResponseEntity<APIError> buildError(int status, String error, String message, String path) {
-        APIError apiError = new APIError(
-                LocalDateTime.now(),
-                status,
-                error,
-                message,
-                path
-        );
-        return ResponseEntity.status(status).body(apiError);
     }
 }
